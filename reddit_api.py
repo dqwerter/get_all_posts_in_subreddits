@@ -127,7 +127,7 @@ def main():
 
 
 subreddit = sys.argv[1]
-response_interval = int(sys.argv[2])
+response_interval = float(sys.argv[2])
 
 if __name__ == '__main__':
     main()
