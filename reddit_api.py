@@ -31,7 +31,7 @@ class RedditApi:
                                  auth=client_auth)
         if response.status_code == 200:
             self.access_token = 'bearer ' + response.json()['access_token']
-            print('[update_access_token] get access_token: ', self.access_token)
+            # print('[update_access_token] get access_token: ', self.access_token)
         else:
             print('[update_access_token] failed')
 
@@ -83,9 +83,9 @@ class RedditApi:
                 json.dump(response.json(), output)
                 print('[save_post_json_data] r/' + subreddit, post_id, 'collected.')
         else:
-            print('[save_post_json_data] r/' + subreddit, post_id, 'empty json with code ' + str(response.status_code) + '.')
-            time.sleep(1)
-
+            time.sleep(3)
+            print('[save_post_json_data] r/' + subreddit, post_id, 'empty json with code ' + str(response.status_code) + ', recursively restart.')
+            main()
 
 def get_collected_post_set(dir):
     post_collected_id = set()
@@ -94,7 +94,7 @@ def get_collected_post_set(dir):
     return post_collected_id
 
 
-def crawl_subreddit(subreddit):
+def crawl_subreddit(subreddit, reddit_api, pushshift_api):
     # creat directory when nesessary
     Path(os.path.join('post_data_of_subreddit_' + subreddit)).mkdir(parents=True, exist_ok=True)
     post_collected_id = get_collected_post_set('post_data_of_subreddit_' + subreddit)
@@ -102,30 +102,32 @@ def crawl_subreddit(subreddit):
     i = 0
     j = float('inf')
     for post in pushshift_api.search_submissions(subreddit=subreddit, limit=j):
-        if post.id in post_collected_id:
-            print('[skip] r/' + subreddit, post.id, 'already collected')
-        else:
+        if post.id not in post_collected_id:
             time.sleep(response_interval)
             print('[' + str(i) + '] \t', end='')
             reddit_api.save_post_json_data(subreddit, post.id)
             i += 1
 
+def main():
+    reddit_api = RedditApi(client_id=os.environ.get('REDDIT_CLIENT_ID'),
+                        client_secret=os.environ.get('REDDIT_CLIENT_SECRET'),
+                        user_name=os.environ.get('REDDIT_USER_NAME'),
+                        user_password=os.environ.get('REDDIT_USER_PASSWORD'),
+                        usage_purpose='COVID19 analysis')
+    pushshift_api = PushshiftAPI()
+
+    if subreddit == 'otherSubs':
+        print('[list mode]')
+        subreddit_list = ['COVID19', 'COVID19_support', 'COVID19positive', 'COVIDProjects', 'PandemicPreps']
+        for listed_subreddit in subreddit_list:
+            crawl_subreddit(listed_subreddit, reddit_api, pushshift_api)
+    else:
+        crawl_subreddit(subreddit, reddit_api, pushshift_api)
+
+
 
 subreddit = sys.argv[1]
 response_interval = int(sys.argv[2])
 
-reddit_api = RedditApi(client_id=os.environ.get('REDDIT_CLIENT_ID'),
-                       client_secret=os.environ.get('REDDIT_CLIENT_SECRET'),
-                       user_name=os.environ.get('REDDIT_USER_NAME'),
-                       user_password=os.environ.get('REDDIT_USER_PASSWORD'),
-                       usage_purpose='COVID19 analysis')
-
-pushshift_api = PushshiftAPI()
-
-if subreddit == 'otherSubs':
-    print('[list mode]')
-    subreddit_list = ['COVID19', 'COVID19_support', 'COVID19positive', 'COVIDProjects', 'PandemicPreps']
-    for listed_subreddit in subreddit_list:
-        crawl_subreddit(listed_subreddit)
-else:
-    crawl_subreddit(subreddit)
+if __name__ == '__main__':
+    main()
