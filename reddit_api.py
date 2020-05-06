@@ -87,11 +87,25 @@ class RedditApi:
             print('[save_post_json_data] r/' + subreddit, post_id, 'empty json with code ' + str(response.status_code) + ', recursively restart.')
             main()
 
+
 def get_collected_post_set(dir):
     post_collected_id = set()
+    filename = dir + '.collected'
+    if os.path.isfile(filename):
+        with open(filename, 'r', encoding='utf-8') as f:
+            for line in f:
+                post_collected_id.add(line)
     for post_id in os.listdir(dir):
         post_collected_id.add(post_id.split('.')[0])
     return post_collected_id
+
+
+def save_collected_post_set(post_collected_id, dir):
+    filename = dir + '.collected'
+    with open(filename, 'w+', encoding='utf-8') as f:
+        for id in post_collected_id:
+            f.write(id + '\n')
+    print('[save_collected_post_set] complete')
 
 
 def crawl_subreddit(subreddit, reddit_api, pushshift_api):
@@ -107,6 +121,9 @@ def crawl_subreddit(subreddit, reddit_api, pushshift_api):
             print('[' + str(i) + '] \t', end='')
             reddit_api.save_post_json_data(subreddit, post.id)
             i += 1
+            if i % 500 == 0:
+                save_collected_post_set(post_collected_id, 'post_data_of_subreddit_' + subreddit)
+
 
 def main():
     reddit_api = RedditApi(client_id=os.environ.get('REDDIT_CLIENT_ID'),
@@ -123,7 +140,6 @@ def main():
             crawl_subreddit(listed_subreddit, reddit_api, pushshift_api)
     else:
         crawl_subreddit(subreddit, reddit_api, pushshift_api)
-
 
 
 subreddit = sys.argv[1]
